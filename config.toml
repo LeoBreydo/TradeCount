@@ -1,0 +1,7 @@
+quote_file_path = "./quotes-test.csv"
+trade_file_path = "./trades-test.csv"
+quote_file_has_header = true
+trade_file_has_header = true
+trade_price_offset = 4
+quote_ask_offset = 3
+quote_bid_offset = 9
