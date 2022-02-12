@@ -63,9 +63,9 @@ pub fn process_quote_record(record: String, ask_offset:usize, bid_offset:usize) 
     }
     (time.unwrap(),ask.unwrap(),bid.unwrap())
 }
-const H_FACTOR:usize = 24*60*60000;
-const M_FACTOR:usize = 60*60000;
-const S_FACTOR:usize = 60000;
+const H_FACTOR:usize = 3600000;
+const M_FACTOR:usize = 60000;
+const S_FACTOR:usize = 1000;
 fn get_millis(field:&str)->Option<usize>{
     let v:Vec<&str> = field.split(":").collect();
     if v.len() != 3{
@@ -107,11 +107,11 @@ mod tests {
         let s = "01:01:01.900";
         let v:Vec<&str> = s.split(":").collect();
         let vv:Vec<&str> = v[2].split(".").collect();
-        let h = v[0].parse::<usize>().unwrap()*24*60*60000;
-        let m:usize = v[1].parse::<usize>().unwrap()*60*60000;
-        let s:usize = vv[0].parse::<usize>().unwrap()*60000;
+        let h = v[0].parse::<usize>().unwrap()*3600000;
+        let m:usize = v[1].parse::<usize>().unwrap()*60000;
+        let s:usize = vv[0].parse::<usize>().unwrap()*1000;
         let ms:usize = vv[1].parse::<usize>().unwrap();
-        assert_eq!(90060900, h+m+s+ms);
+        assert_eq!(3600000+60000+1000+900, h+m+s+ms);
     }
 }
 
