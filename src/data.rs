@@ -1,3 +1,5 @@
+use std::fs::File;
+use std::io::{BufReader, Lines};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -20,7 +22,7 @@ pub enum Command{
 pub fn process_price(price:f32, ask:f32, bid: f32) -> usize{
     return if price > bid && price < ask { 1 } else { 0 }
 }
-// // -> (ts, price)
+// -> (ts, price)
 pub fn process_trade_record(record: String, price_offset:usize) -> (usize,f32){
     let v: Vec<&str> = record.split(",").collect();
     if v.len() < price_offset+1{
@@ -96,6 +98,40 @@ fn get_millis(field:&str)->Option<usize>{
     }
     let ms = msr.unwrap();
     Some(h+m+s+ms)
+}
+
+pub struct DataProvider<'a>{
+    quote_iter : &'a mut Lines<BufReader<File>>,
+    trade_iter : &'a mut Lines<BufReader<File>>,
+    trade_price_offset: usize,
+    quote_ask_offset: usize,
+    quote_bid_offset: usize
+
+}
+impl<'a> DataProvider<'a> {
+    pub fn new(qi:&'a mut Lines<BufReader<File>>, ti:&'a mut Lines<BufReader<File>>,
+               trade_price_offset:usize, quote_ask_offset:usize, quote_bid_offset:usize) -> Self{
+        Self{ quote_iter: qi, trade_iter: ti, trade_price_offset, quote_ask_offset, quote_bid_offset }
+    }
+    pub fn next_quote_row(&mut self) -> Option<std::io::Result<String>> {
+        self.quote_iter.next()
+    }
+    pub fn next_trade_row(&mut self) -> Option<std::io::Result<String>> {
+        self.trade_iter.next()
+    }
+    pub fn next_quote_record(&mut self) -> (usize,f32,f32){
+        let q = self.quote_iter.next();
+        return if q.is_none() { (0, -1.0, -1.0) } else {
+            process_quote_record(q.unwrap().unwrap(),
+                                 self.quote_ask_offset, self.quote_bid_offset)
+        }
+    }
+    pub fn next_trade_record(&mut self) -> (usize,f32){
+        let q = self.trade_iter.next();
+        return if q.is_none() { (0, -1.0) } else {
+            process_trade_record(q.unwrap().unwrap(), self.trade_price_offset)
+        }
+    }
 }
 
 #[cfg(test)]
