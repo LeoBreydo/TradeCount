@@ -74,10 +74,10 @@ fn main() -> io::Result<()>{
             }
         }
         // do job
-        let ret = apply_logic(&mut last_bid, &mut last_ask,
+        let (incr,new_cmd) = apply_logic(&mut last_bid, &mut last_ask,
                     &mut last_quote, last_trade, check_spread_condition);
-        count += ret.0;
-        command = ret.1;
+        count += incr;
+        command = new_cmd;
     }
 
     // show result
