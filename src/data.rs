@@ -67,9 +67,6 @@ impl Converter<(usize,f32)> for TradeInfo{
     }
 }
 
-pub fn process_price(price:f32, ask:f32, bid: f32) -> usize{
-    return if price > bid && price < ask { 1 } else { 0 }
-}
 const H_FACTOR:usize = 3600000;
 const M_FACTOR:usize = 60000;
 const S_FACTOR:usize = 1000;
