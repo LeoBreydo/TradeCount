@@ -2,9 +2,11 @@ use std::{
     fs::{read_to_string},
     io
 };
-use crate::data::{Command, Config, DataProvider, process_price};
+use crate::data::{Command, Config, Converter, process_price, QuoteInfo, TradeInfo};
+use crate::two_files_iterator::TwoFilesIterator;
 
 mod data;
+mod two_files_iterator;
 
 fn main() -> io::Result<()>{
     // read configuration
@@ -19,22 +21,27 @@ fn main() -> io::Result<()>{
     let mut last_quote = (0,-1.0,-1.0);
     let mut last_trade = (0,-1.0);
 
-    let dp = DataProvider::new(&conf);
-    if dp.is_none(){
+    let qin = QuoteInfo{ ask_offset: conf.quote_ask_offset, bid_offset: conf.quote_bid_offset };
+    let tin = TradeInfo{ price_offset: conf.trade_price_offset };
+
+    let tfi = TwoFilesIterator::new(conf.quote_file_path, conf.trade_file_path,
+                                    &tin as &dyn Converter<(usize,f32)>,
+                                    &qin as &dyn Converter<(usize,f32,f32)>);
+    if tfi.is_none(){
         println!("Impossible to create data provider (check file paths, please). Program is closed.");
         return Ok(());
     }
-    let mut dp = dp.unwrap();
+    let mut tfi = tfi.unwrap();
 
     // skip headers (opt.)
     if conf.quote_file_has_header {
-        if dp.next_quote_row().is_none(){
+        if tfi.next_quote_row().is_none(){
             println!("Empty quote file. Program is closed.");
             return Ok(());
         }
     }
     if conf.trade_file_has_header {
-        if dp.next_trade_row().is_none(){
+        if tfi.next_trade_row().is_none(){
             println!("Empty trade file. Program is closed.");
             return Ok(());
         }
@@ -46,21 +53,25 @@ fn main() -> io::Result<()>{
         // get new data
         match command{
             Command::GetBoth =>{
-                last_quote = dp.next_quote_record();
-                last_trade = dp.next_trade_record();
-                if last_quote.1 < 0.0 || last_trade.1 < 0.0 {
+                let lq = tfi.next_quote_record();
+                let lt = tfi.next_trade_record();
+                if lq.is_none()|| lt.is_none() {
                     println!("No data. Program is closed.");
                     break;
                 }
+                last_quote = lq.unwrap();
+                last_trade = lt.unwrap();
                 check_spread_condition = false;
             },
             Command::GetTrade =>{
-                last_trade = dp.next_trade_record();
-                if last_trade.1 < 0.0{ break; }
+                let lt = tfi.next_trade_record();
+                if lt.is_none(){ break; }
+                last_trade = lt.unwrap();
             },
             Command::GetQuote =>{
-                last_quote = dp.next_quote_record();
-                if last_quote.1 < 0.0{ break; }
+                let lq = tfi.next_quote_record();
+                if lq.is_none(){ break; }
+                last_quote = lq.unwrap();
             }
         }
         // do job

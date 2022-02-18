@@ -1,5 +1,3 @@
-use std::fs::File;
-use std::io::{BufRead, BufReader, Lines};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -12,58 +10,65 @@ pub struct Config {
     pub quote_ask_offset: usize,
     pub quote_bid_offset: usize
 }
-
 pub enum Command{
     GetBoth,
     GetQuote,
     GetTrade
 }
+pub trait Converter<T> {
+    fn convert(&self, from:String) -> Option<T>;
+}
+
+pub struct QuoteInfo{pub ask_offset:usize,pub bid_offset:usize}
+pub struct TradeInfo{pub price_offset:usize}
+impl Converter<(usize,f32,f32)> for  QuoteInfo{
+    fn convert(&self, record: String) -> Option<(usize,f32,f32)>{
+        let v: Vec<&str> = record.split(",").collect();
+        if v.len() < self.bid_offset+1{
+            println!("Corrupted data detected");
+            return None;
+        }
+        let time = get_millis(&v[0]);
+        if time.is_none(){
+            println!("Corrupted data detected");
+            return None;
+        }
+        let ask = v[self.ask_offset].parse::<f32>();
+        if ask.is_err(){
+            println!("Corrupted data detected");
+            return None;
+        }
+        let bid = v[self.bid_offset].parse::<f32>();
+        if bid.is_err(){
+            println!("Corrupted data detected");
+            return None;
+        }
+        Some((time.unwrap(),ask.unwrap(),bid.unwrap()))
+    }
+}
+impl Converter<(usize,f32)> for TradeInfo{
+    fn convert(&self, record: String) -> Option<(usize,f32)>{
+        let v: Vec<&str> = record.split(",").collect();
+        if v.len() < self.price_offset+1{
+            println!("Corrupted data detected");
+            return None;
+        }
+        let time = get_millis(&v[0]);
+        if time.is_none(){
+            println!("Corrupted data detected");
+            return None;
+        }
+        let price = v[self.price_offset].parse::<f32>();
+        if price.is_err(){
+            println!("Corrupted data detected");
+            return None;
+        }
+        Some((time.unwrap(), price.unwrap()))
+    }
+}
 
 pub fn process_price(price:f32, ask:f32, bid: f32) -> usize{
     return if price > bid && price < ask { 1 } else { 0 }
-}
-// -> (ts, price)
-pub fn process_trade_record(record: String, price_offset:usize) -> (usize,f32){
-    let v: Vec<&str> = record.split(",").collect();
-    if v.len() < price_offset+1{
-        println!("Corrupted data detected");
-        return (0,-1.0);
-    }
-    let time = get_millis(&v[0]);
-    if time.is_none(){
-        println!("Corrupted data detected");
-        return (0,-1.0);
-    }
-    let price = v[price_offset].parse::<f32>();
-    if price.is_err(){
-        println!("Corrupted data detected");
-        return (0,-1.0);
-    }
-    (time.unwrap(), price.unwrap())
-}
-// -> (ts, ask,bid)
-pub fn process_quote_record(record: String, ask_offset:usize, bid_offset:usize) -> (usize,f32,f32){
-    let v: Vec<&str> = record.split(",").collect();
-    if v.len() < bid_offset+1{
-        println!("Corrupted data detected");
-        return (0,-1.0,-1.0);
-    }
-    let time = get_millis(&v[0]);
-    if time.is_none(){
-        println!("Corrupted data detected");
-        return (0,-1.0,-1.0);
-    }
-    let ask = v[ask_offset].parse::<f32>();
-    if ask.is_err(){
-        println!("Corrupted data detected");
-        return (0,-1.0,-1.0);
-    }
-    let bid = v[bid_offset].parse::<f32>();
-    if bid.is_err(){
-        println!("Corrupted data detected");
-        return (0,-1.0,-1.0);
-    }
-    (time.unwrap(),ask.unwrap(),bid.unwrap())
 }
 const H_FACTOR:usize = 3600000;
 const M_FACTOR:usize = 60000;
@@ -98,43 +103,6 @@ fn get_millis(field:&str)->Option<usize>{
     }
     let ms = msr.unwrap();
     Some(h+m+s+ms)
-}
-
-pub struct DataProvider{
-    quote_iter : Lines<BufReader<File>>,
-    trade_iter : Lines<BufReader<File>>,
-    trade_price_offset: usize,
-    quote_ask_offset: usize,
-    quote_bid_offset: usize
-
-}
-impl DataProvider {
-    pub fn new(conf: &Config) -> Option<DataProvider> {
-        Some(Self{ quote_iter: BufReader::new(File::open(&conf.quote_file_path).ok()?).lines(),
-            trade_iter: BufReader::new(File::open(&conf.trade_file_path).ok()?).lines(),
-            trade_price_offset: conf.trade_price_offset,
-            quote_ask_offset: conf.quote_ask_offset,
-            quote_bid_offset: conf.quote_bid_offset })
-    }
-    pub fn next_quote_row(&mut self) -> Option<std::io::Result<String>> {
-        self.quote_iter.next()
-    }
-    pub fn next_trade_row(&mut self) -> Option<std::io::Result<String>> {
-        self.trade_iter.next()
-    }
-    pub fn next_quote_record(&mut self) -> (usize,f32,f32){
-        let q = self.quote_iter.next();
-        return if q.is_none() { (0, -1.0, -1.0) } else {
-            process_quote_record(q.unwrap().unwrap(),
-                                 self.quote_ask_offset, self.quote_bid_offset)
-        }
-    }
-    pub fn next_trade_record(&mut self) -> (usize,f32){
-        let q = self.trade_iter.next();
-        return if q.is_none() { (0, -1.0) } else {
-            process_trade_record(q.unwrap().unwrap(), self.trade_price_offset)
-        }
-    }
 }
 
 #[cfg(test)]
