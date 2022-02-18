@@ -10,8 +10,20 @@ mod two_files_iterator;
 
 fn main() -> io::Result<()>{
     // read configuration
-    let toml_config_str = read_to_string("./config.toml").unwrap();
-    let conf: Config = toml::from_str(&toml_config_str).unwrap();
+    let toml_config_str = match read_to_string("./config.toml"){
+        Err(..) =>{
+            println!("Can't read config. file. Program is closed.");
+            return Ok(());
+        },
+        Ok(s) => s
+    };
+    let conf: Config = match toml::from_str(&toml_config_str) {
+        Err(..) => {
+            println!("Can't parse config. file. Program is closed.");
+            return Ok(());
+        },
+        Ok(c) => c
+    };
 
     // setup
     let mut count = 0;
