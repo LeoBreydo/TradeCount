@@ -20,7 +20,10 @@ fn main() -> io::Result<()>{
     let mut last_trade = (0,-1.0);
 
     let dp = DataProvider::new(&conf);
-    if dp.is_none(){return Ok(());}
+    if dp.is_none(){
+        println!("Impossible to create data provider (check file paths, please). Program is closed.");
+        return Ok(());
+    }
     let mut dp = dp.unwrap();
 
     // skip headers (opt.)
