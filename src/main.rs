@@ -1,26 +1,23 @@
-use std::{
-    fs::{read_to_string},
-    io
-};
+use std::fs::read_to_string;
 use crate::data::{Command, Config, QuoteInfo, TradeInfo};
 use crate::two_files_iterator::TwoFilesIterator;
 
 mod data;
 mod two_files_iterator;
 
-fn main() -> io::Result<()>{
+fn main() {
     // read configuration
     let toml_config_str = match read_to_string("./config.toml"){
         Err(..) =>{
             println!("Can't read config. file. Program is closed.");
-            return Ok(());
+            return;
         },
         Ok(s) => s
     };
     let conf: Config = match toml::from_str(&toml_config_str) {
         Err(..) => {
             println!("Can't parse config. file. Program is closed.");
-            return Ok(());
+            return;
         },
         Ok(c) => c
     };
@@ -39,7 +36,7 @@ fn main() -> io::Result<()>{
     let mut tfi = match TwoFilesIterator::new(conf.quote_file_path, conf.trade_file_path, tin, qin){
         None => {
             println!("Impossible to create data provider (check file paths, please). Program is closed.");
-            return Ok(());
+            return;
         },
         Some(it) => it
     };
@@ -48,13 +45,13 @@ fn main() -> io::Result<()>{
     if conf.quote_file_has_header {
         if tfi.next_quote_row().is_none(){
             println!("Empty quote file. Program is closed.");
-            return Ok(());
+            return;
         }
     }
     if conf.trade_file_has_header {
         if tfi.next_trade_row().is_none(){
             println!("Empty trade file. Program is closed.");
-            return Ok(());
+            return;
         }
     }
 
@@ -102,7 +99,6 @@ fn main() -> io::Result<()>{
 
     // show result
     println!("Trades within spread : {}", count);
-    Ok(())
 }
 
 fn process_price(price:f32, ask:f32, bid: f32) -> usize{
