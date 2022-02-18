@@ -1,6 +1,6 @@
 use std::{
     fs::File,
-    io::{BufRead, BufReader, Lines}
+    io::{BufRead, BufReader, Lines, Result}
 };
 use crate::data::Converter;
 
@@ -20,16 +20,16 @@ impl<T,U> TwoFilesIterator<T,U> {
             to_quote_converter:Box::new(to_quote_converter)
         })
     }
-    pub fn next_quote_row(&mut self) -> Option<std::io::Result<String>> {
+    pub fn next_quote_row(&mut self) -> Option<Result<String>> {
         self.quote_iter.next()
     }
-    pub fn next_trade_row(&mut self) -> Option<std::io::Result<String>> { self.trade_iter.next() }
+    pub fn next_trade_row(&mut self) -> Option<Result<String>> { self.trade_iter.next() }
     pub fn next_quote_record(&mut self) -> Option<U>{
         let q = self.quote_iter.next();
-        return if q.is_none() { None } else { self.to_quote_converter.convert(q.unwrap().unwrap()) }
+        return if q.is_none() { None } else { self.to_quote_converter.convert(q.unwrap()) }
     }
     pub fn next_trade_record(&mut self) -> Option<T>{
         let q = self.trade_iter.next();
-        return if q.is_none() { None } else { self.to_trade_converter.convert(q.unwrap().unwrap()) }
+        return if q.is_none() { None } else { self.to_trade_converter.convert(q.unwrap()) }
     }
 }

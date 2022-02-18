@@ -1,3 +1,4 @@
+use std::io::Result;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -16,14 +17,16 @@ pub enum Command{
     GetTrade
 }
 pub trait Converter<T> {
-    fn convert(&self, from:String) -> Option<T>;
+    fn convert(&self, from: Result<String>) -> Option<T>;
 }
 
 pub struct QuoteInfo{pub ask_offset:usize,pub bid_offset:usize}
 pub struct TradeInfo{pub price_offset:usize}
 impl Converter<(usize,f32,f32)> for  QuoteInfo{
-    fn convert(&self, record: String) -> Option<(usize,f32,f32)>{
-        let v: Vec<&str> = record.split(",").collect();
+    fn convert(&self, record: Result<String>) -> Option<(usize,f32,f32)>{
+        if record.is_err(){return None;}
+        let s = record.unwrap();
+        let v: Vec<&str> = s.split(",").collect();
         if v.len() < self.bid_offset+1{
             println!("Corrupted data detected");
             return None;
@@ -47,8 +50,10 @@ impl Converter<(usize,f32,f32)> for  QuoteInfo{
     }
 }
 impl Converter<(usize,f32)> for TradeInfo{
-    fn convert(&self, record: String) -> Option<(usize,f32)>{
-        let v: Vec<&str> = record.split(",").collect();
+    fn convert(&self, record: Result<String>) -> Option<(usize,f32)>{
+        if record.is_err() {return None;}
+        let s = record.unwrap();
+        let v: Vec<&str> = s.split(",").collect();
         if v.len() < self.price_offset+1{
             println!("Corrupted data detected");
             return None;
