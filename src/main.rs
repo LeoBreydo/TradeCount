@@ -1,12 +1,7 @@
 use std::{
-    fs::{File, read_to_string},
-    io::{
-        self,
-        BufRead,
-        BufReader
-    }
+    fs::{read_to_string},
+    io
 };
-use std::borrow::BorrowMut;
 use crate::data::{Command, Config, DataProvider, process_price};
 
 mod data;
@@ -24,17 +19,9 @@ fn main() -> io::Result<()>{
     let mut last_quote = (0,-1.0,-1.0);
     let mut last_trade = (0,-1.0);
 
-    // get iterators
-    let quote_file = File::open(conf.quote_file_path)?;
-    let quote_reader = BufReader::new(quote_file);
-    let mut quote_iterator = quote_reader.lines();
-
-    let trade_file = File::open(conf.trade_file_path)?;
-    let trade_reader = BufReader::new(trade_file);
-    let mut trade_iterator = trade_reader.lines();
-
-    let mut dp = DataProvider::new(quote_iterator.borrow_mut(),trade_iterator.borrow_mut(),
-    conf.trade_price_offset, conf.quote_ask_offset, conf.quote_bid_offset);
+    let dp = DataProvider::new(&conf);
+    if dp.is_none(){return Ok(());}
+    let mut dp = dp.unwrap();
 
     // skip headers (opt.)
     if conf.quote_file_has_header {

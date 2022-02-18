@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{BufReader, Lines};
+use std::io::{BufRead, BufReader, Lines};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -100,18 +100,21 @@ fn get_millis(field:&str)->Option<usize>{
     Some(h+m+s+ms)
 }
 
-pub struct DataProvider<'a>{
-    quote_iter : &'a mut Lines<BufReader<File>>,
-    trade_iter : &'a mut Lines<BufReader<File>>,
+pub struct DataProvider{
+    quote_iter : Lines<BufReader<File>>,
+    trade_iter : Lines<BufReader<File>>,
     trade_price_offset: usize,
     quote_ask_offset: usize,
     quote_bid_offset: usize
 
 }
-impl<'a> DataProvider<'a> {
-    pub fn new(qi:&'a mut Lines<BufReader<File>>, ti:&'a mut Lines<BufReader<File>>,
-               trade_price_offset:usize, quote_ask_offset:usize, quote_bid_offset:usize) -> Self{
-        Self{ quote_iter: qi, trade_iter: ti, trade_price_offset, quote_ask_offset, quote_bid_offset }
+impl DataProvider {
+    pub fn new(conf: &Config) -> Option<DataProvider> {
+        Some(Self{ quote_iter: BufReader::new(File::open(&conf.quote_file_path).ok()?).lines(),
+            trade_iter: BufReader::new(File::open(&conf.trade_file_path).ok()?).lines(),
+            trade_price_offset: conf.trade_price_offset,
+            quote_ask_offset: conf.quote_ask_offset,
+            quote_bid_offset: conf.quote_bid_offset })
     }
     pub fn next_quote_row(&mut self) -> Option<std::io::Result<String>> {
         self.quote_iter.next()
