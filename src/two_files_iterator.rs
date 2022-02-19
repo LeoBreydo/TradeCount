@@ -2,7 +2,7 @@ use std::{
     fs::File,
     io::{BufRead, BufReader, Lines, Result}
 };
-use crate::data::Converter;
+use crate::converters::Converter;
 
 pub struct TwoFilesIterator<T, U> {
     quote_iter: Lines<BufReader<File>>,

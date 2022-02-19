@@ -1,27 +1,10 @@
 use std::io::Result;
-use serde::Deserialize;
 
-#[derive(Deserialize)]
-pub struct Config {
-    pub quote_file_path: String,
-    pub trade_file_path: String,
-    pub quote_file_has_header: bool,
-    pub trade_file_has_header: bool,
-    pub trade_price_offset: usize,
-    pub quote_ask_offset: usize,
-    pub quote_bid_offset: usize
-}
-pub enum Command{
-    GetBoth,
-    GetQuote,
-    GetTrade
-}
 pub trait Converter<T> {
     fn convert(&self, from: Result<String>) -> Option<T>;
 }
 
 pub struct QuoteInfo{pub ask_offset:usize,pub bid_offset:usize}
-pub struct TradeInfo{pub price_offset:usize}
 impl Converter<(usize,f32,f32)> for  QuoteInfo{
     fn convert(&self, record: Result<String>) -> Option<(usize,f32,f32)>{
         if record.is_err(){return None;}
@@ -49,6 +32,8 @@ impl Converter<(usize,f32,f32)> for  QuoteInfo{
         Some((time.unwrap(),ask.unwrap(),bid.unwrap()))
     }
 }
+
+pub struct TradeInfo{pub price_offset:usize}
 impl Converter<(usize,f32)> for TradeInfo{
     fn convert(&self, record: Result<String>) -> Option<(usize,f32)>{
         if record.is_err() {return None;}

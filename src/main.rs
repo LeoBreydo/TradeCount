@@ -1,22 +1,16 @@
-use std::fs::read_to_string;
-use crate::data::{Command, Config, QuoteInfo, TradeInfo};
+use crate::configuration::Config;
+use crate::converters::{QuoteInfo,TradeInfo};
 use crate::two_files_iterator::TwoFilesIterator;
 
-mod data;
+mod converters;
 mod two_files_iterator;
+mod configuration;
 
 fn main() {
     // read configuration
-    let toml_config_str = match read_to_string("./config.toml"){
-        Err(..) =>{
-            println!("Can't read config. file. Program is closed.");
-            return;
-        },
-        Ok(s) => s
-    };
-    let conf: Config = match toml::from_str(&toml_config_str) {
-        Err(..) => {
-            println!("Can't parse config. file. Program is closed.");
+    let conf: Config = match Config::from_file("./config.toml"){
+        Err(msg) =>{
+            println!("{}",msg);
             return;
         },
         Ok(c) => c
@@ -99,6 +93,12 @@ fn main() {
 
     // show result
     println!("Trades within spread : {}", count);
+}
+
+enum Command{
+    GetBoth,
+    GetQuote,
+    GetTrade
 }
 
 fn process_price(price:f32, ask:f32, bid: f32) -> usize{
