@@ -1,10 +1,12 @@
 use crate::configuration::Config;
 use crate::converters::{QuoteInfo,TradeInfo};
+use crate::matcher::{Matcher, QuoteToTradeMatcher};
 use crate::two_files_iterator::TwoFilesIterator;
 
 mod converters;
 mod two_files_iterator;
 mod configuration;
+mod matcher;
 
 fn main() {
     // read configuration
@@ -18,11 +20,11 @@ fn main() {
 
     // setup
     let mut count = 0;
-    let mut last_bid =-1.0;
-    let mut last_ask = -1.0;
+    let mut last_ask_bid:(f32,f32) = (-1.0,-1.0);
     let mut command = Command::GetBoth;
     let mut last_quote = (0,-1.0,-1.0);
     let mut last_trade = (0,-1.0);
+    let qtm = QuoteToTradeMatcher::default();
 
     let qin = QuoteInfo{ ask_offset: conf.quote_ask_offset, bid_offset: conf.quote_bid_offset };
     let tin = TradeInfo{ price_offset: conf.trade_price_offset };
@@ -85,8 +87,8 @@ fn main() {
             }
         }
         // do job
-        let (incr,new_cmd) = apply_logic(&mut last_bid, &mut last_ask,
-                    &mut last_quote, last_trade, check_spread_condition);
+        let (incr,new_cmd) = apply_logic(&mut last_ask_bid,
+                    &mut last_quote, last_trade, qtm, check_spread_condition);
         count += incr;
         command = new_cmd;
     }
@@ -101,28 +103,26 @@ enum Command{
     GetTrade
 }
 
-fn process_price(price:f32, ask:f32, bid: f32) -> usize{
-    return if price > bid && price < ask { 1 } else { 0 }
-}
-fn apply_logic(mut last_bid: &mut f32, mut last_ask: &mut f32,
+fn apply_logic(mut last_ask_bid: &mut (f32,f32),
                last_quote: &(usize, f32, f32), last_trade: (usize, f32),
+               qtm: impl Matcher<(f32,f32),(usize,f32)>,
                check_spread_condition: bool) -> (usize,Command) {
     return if last_trade.0 < last_quote.0 {
-        process_trade(*last_bid, *last_ask, last_trade, check_spread_condition)
+        process_trade(*last_ask_bid, last_trade, qtm, check_spread_condition)
     } else {
-        (0, apply_new_quote(&mut last_bid, &mut last_ask, &last_quote))
+        (0, apply_new_quote(&mut last_ask_bid, &last_quote))
     }
 }
-fn process_trade(last_bid: f32, last_ask: f32, last_trade: (usize, f32),
-                check_spread_condition: bool) -> (usize,Command){
-    return if check_spread_condition && last_ask > 0.0 {
-        (process_price(last_trade.1, last_ask, last_bid),Command::GetTrade)
+fn process_trade(last_ask_bid: (f32,f32), last_trade: (usize, f32),
+                 qtm: impl Matcher<(f32,f32),(usize,f32)>,
+                 check_spread_condition: bool) -> (usize,Command){
+    return if check_spread_condition && last_ask_bid.1 > 0.0 {
+        (if qtm.is_matched(&last_ask_bid,&last_trade){1}else{0},Command::GetTrade)
     } else { (0,Command::GetTrade) }
 }
-fn apply_new_quote(last_bid: &mut f32, last_ask: &mut f32,
+fn apply_new_quote(last_ask_bid: &mut (f32,f32),
                    last_quote: &(usize, f32, f32)) -> Command {
-    *last_ask = last_quote.1;
-    *last_bid = last_quote.2;
+    *last_ask_bid = (last_quote.1,last_quote.2);
     Command::GetQuote
 }
 
